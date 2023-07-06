@@ -212,7 +212,17 @@ export default {
   },
 
   isObject (obj) {
-    return typeof obj === 'object' && obj !== null && !Array.isArray(obj)
+    if (typeof obj !== 'object' || obj === null) {
+      return false
+    }
+
+    let proto = obj
+
+    while (Object.getPrototypeOf(proto) !== null) {
+      proto = Object.getPrototypeOf(proto)
+    }
+
+    return Object.getPrototypeOf(obj) === proto
   },
 
   isEmptyObject (obj = {}) {
@@ -407,6 +417,11 @@ export default {
     return false
   },
 
+  escapeApostrophe (value) {
+    return value.toString()
+      .replace(/'/g, '&#39;')
+  },
+
   escapeHTML (text) {
     if (!text) {
       return text
@@ -524,7 +539,7 @@ export default {
 
         const field = columns[x].field
 
-        row[field] = $el.html().trim()
+        row[field] = this.escapeApostrophe($el.html().trim())
         // save td's id, class and data-* attributes
         row[`_${field}_id`] = $el.attr('id')
         row[`_${field}_class`] = $el.attr('class')

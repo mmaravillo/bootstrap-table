@@ -4,8 +4,6 @@
  * @version: v1.2.0
  */
 
-const Utils = $.fn.bootstrapTable.utils
-
 $.akottr.dragtable.prototype._restoreState = function (persistObj) {
   let i = 0
 
@@ -61,7 +59,7 @@ const filterFn = () => {
   }
 }
 
-Utils.extend($.fn.bootstrapTable.defaults, {
+Object.assign($.fn.bootstrapTable.defaults, {
   reorderableColumns: false,
   maxMovingRows: 10,
   // eslint-disable-next-line no-unused-vars
@@ -71,7 +69,7 @@ Utils.extend($.fn.bootstrapTable.defaults, {
   dragaccept: null
 })
 
-Utils.extend($.fn.bootstrapTable.Constructor.EVENTS, {
+Object.assign($.fn.bootstrapTable.events, {
   'reorder-column.bs.table': 'onReorderColumn'
 })
 
@@ -85,7 +83,7 @@ $.BootstrapTable = class extends $.BootstrapTable {
       return
     }
 
-    this.makeRowsReorderable()
+    this.makeColumnsReorderable()
   }
 
   _toggleColumn (...args) {
@@ -95,7 +93,7 @@ $.BootstrapTable = class extends $.BootstrapTable {
       return
     }
 
-    this.makeRowsReorderable()
+    this.makeColumnsReorderable()
   }
 
   toggleView (...args) {
@@ -109,7 +107,7 @@ $.BootstrapTable = class extends $.BootstrapTable {
       return
     }
 
-    this.makeRowsReorderable()
+    this.makeColumnsReorderable()
   }
 
   resetView (...args) {
@@ -119,10 +117,10 @@ $.BootstrapTable = class extends $.BootstrapTable {
       return
     }
 
-    this.makeRowsReorderable()
+    this.makeColumnsReorderable()
   }
 
-  makeRowsReorderable (order = null) {
+  makeColumnsReorderable (order = null) {
     try {
       $(this.$el).dragtable('destroy')
     } catch (e) {
@@ -209,6 +207,6 @@ $.BootstrapTable = class extends $.BootstrapTable {
 
   orderColumns (order) {
     this.columnsSortOrder = order
-    this.makeRowsReorderable()
+    this.makeColumnsReorderable()
   }
 }
