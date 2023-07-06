@@ -49,7 +49,7 @@
 
 const Utils = $.fn.bootstrapTable.utils
 
-Utils.extend($.fn.bootstrapTable.defaults, {
+Object.assign($.fn.bootstrapTable.defaults, {
   usePipeline: false,
   pipelineSize: 1000,
   // eslint-disable-next-line no-unused-vars
@@ -62,7 +62,7 @@ Utils.extend($.fn.bootstrapTable.defaults, {
   }
 })
 
-Utils.extend($.fn.bootstrapTable.Constructor.EVENTS, {
+Object.assign($.fn.bootstrapTable.events, {
   'cached-data-hit.bs.table': 'onCachedDataHit',
   'cached-data-reset.bs.table': 'onCachedDataReset'
 })
@@ -254,7 +254,7 @@ BootstrapTable.prototype.initServer = function (silent, query, url) {
   }
   // cached results can't be used
   // continue base initServer code
-  if (!($.isEmptyObject(this.filterColumnsPartial))) {
+  if (!$.isEmptyObject(this.filterColumnsPartial)) {
     params.filter = JSON.stringify(this.filterColumnsPartial, null)
   }
 

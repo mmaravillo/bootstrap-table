@@ -1,6 +1,6 @@
 /**
  * @author zhixin wen <wenzhixin2010@gmail.com>
- * version: 1.21.2
+ * version: 1.22.1
  * https://github.com/wenzhixin/bootstrap-table/
  */
 
@@ -180,7 +180,7 @@ class BootstrapTable {
         if (typeof $th.data('field') !== 'undefined') {
           $th.data('field', `${$th.data('field')}`)
         }
-        const _data = Object.assign({}, Utils.getRealDataAttr($th.data()))
+        const _data = Object.assign({}, $th.data())
 
         for (const key in _data) {
           if ($.fn.bootstrapTable.columnDefaults.hasOwnProperty(key)) {
@@ -189,7 +189,7 @@ class BootstrapTable {
         }
 
         column.push(Utils.extend({}, {
-          _data,
+          _data: Utils.getRealDataAttr(_data),
           title: $th.html(),
           class: $th.attr('class'),
           titleTooltip: $th.attr('title'),
@@ -305,8 +305,8 @@ class BootstrapTable {
         let style = Utils.sprintf('vertical-align: %s; ', column.valign)
 
         style += Utils.sprintf('width: %s; ', (column.checkbox || column.radio) && !width ?
-          (!column.showSelectTitle ? '36px' : undefined) :
-          (width ? width + unitWidth : undefined))
+          !column.showSelectTitle ? '36px' : undefined :
+          width ? width + unitWidth : undefined)
 
         if (typeof column.fieldIndex === 'undefined' && !column.visible) {
           return
@@ -343,7 +343,7 @@ class BootstrapTable {
             return
           }
 
-          if (this.options.cardView && (!column.cardVisible)) {
+          if (this.options.cardView && !column.cardVisible) {
             return
           }
 
@@ -530,6 +530,12 @@ class BootstrapTable {
     }
   }
 
+  sortBy (params) {
+    this.options.sortName = params.field
+    this.options.sortOrder = params.hasOwnProperty('sortOrder') ? params.sortOrder : 'asc'
+    this._sort()
+  }
+
   onSort ({ type, currentTarget }) {
     const $this = type === 'keypress' ? $(currentTarget) : $(currentTarget).parent()
     const $this_ = this.$header.find('th').eq($this.index())
@@ -544,9 +550,9 @@ class BootstrapTable {
       if (currentSortOrder === undefined) {
         this.options.sortOrder = 'asc'
       } else if (currentSortOrder === 'asc') {
-        this.options.sortOrder = this.options.sortReset ? (initialSortOrder === 'asc' ? 'desc' : undefined) : 'desc'
+        this.options.sortOrder = this.options.sortReset ? initialSortOrder === 'asc' ? 'desc' : undefined : 'desc'
       } else if (this.options.sortOrder === 'desc') {
-        this.options.sortOrder = this.options.sortReset ? (initialSortOrder === 'desc' ? 'asc' : undefined) : 'asc'
+        this.options.sortOrder = this.options.sortReset ? initialSortOrder === 'desc' ? 'asc' : undefined : 'asc'
       }
 
       if (this.options.sortOrder === undefined) {
@@ -561,12 +567,17 @@ class BootstrapTable {
           this.columns[this.fieldsColumnsIndex[$this.data('field')]].order
       }
     }
-    this.trigger('sort', this.options.sortName, this.options.sortOrder)
 
     $this.add($this_).data('order', this.options.sortOrder)
 
     // Assign the correct sortable arrow
     this.getCaret()
+
+    this._sort()
+  }
+
+  _sort () {
+    this.trigger('sort', this.options.sortName, this.options.sortOrder)
 
     if (this.options.sidePagination === 'server' && this.options.serverSort) {
       this.options.pageNumber = 1
@@ -656,10 +667,10 @@ class BootstrapTable {
       },
       columns: {
         render: false,
-        html: (() => {
+        html: () => {
           const html = []
 
-          html.push(`<div class="keep-open ${this.constants.classes.buttonsDropdown}" title="${opts.formatColumns()}">
+          html.push(`<div class="keep-open ${this.constants.classes.buttonsDropdown}">
             <button class="${this.constants.buttonsClass} dropdown-toggle" type="button" ${this.constants.dataToggle}="dropdown"
             aria-label="${opts.formatColumns()}" title="${opts.formatColumns()}">
             ${opts.showButtonIcons ? Utils.sprintf(this.constants.html.icon, opts.iconsPrefix, opts.icons.columns) : ''}
@@ -708,18 +719,18 @@ class BootstrapTable {
             }
 
             const checked = column.visible ? ' checked="checked"' : ''
-            const disabled = (visibleColumns <= opts.minimumCountColumns) && checked ? ' disabled="disabled"' : ''
+            const disabled = visibleColumns <= opts.minimumCountColumns && checked ? ' disabled="disabled"' : ''
 
             if (column.switchable) {
               html.push(Utils.sprintf(this.constants.html.toolbarDropdownItem,
                 Utils.sprintf('<input type="checkbox" data-field="%s" value="%s"%s%s> <span>%s</span>',
-                  column.field, i, checked, disabled, column.title)))
+                  column.field, i, checked, disabled, column.switchableLabel ? column.switchableLabel : column.title)))
               switchableCount++
             }
           })
           html.push(this.constants.html.toolbarDropdown[1], '</div>')
           return html.join('')
-        })
+        }
       }
     })
 
@@ -735,10 +746,18 @@ class BootstrapTable {
           buttonHtml = buttonConfig.html
         }
       } else {
-        buttonHtml = `<button class="${this.constants.buttonsClass}" type="button" name="${buttonName}"`
+        let buttonClass = this.constants.buttonsClass
+
+        if (buttonConfig.hasOwnProperty('attributes') && buttonConfig.attributes.class) {
+          buttonClass += ` ${buttonConfig.attributes.class}`
+        }
+        buttonHtml = `<button class="${buttonClass}" type="button" name="${buttonName}"`
 
         if (buttonConfig.hasOwnProperty('attributes')) {
           for (const [attributeName, value] of Object.entries(buttonConfig.attributes)) {
+            if (attributeName === 'class') {
+              continue
+            }
             buttonHtml += ` ${attributeName}="${value}"`
           }
         }
@@ -859,7 +878,7 @@ class BootstrapTable {
       }
     }
     const handleInputEvent = $searchInput => {
-      const eventTriggers = 'keyup drop blur mouseup'
+      const eventTriggers = $searchInput.is('select') ? 'change' : 'keyup drop blur mouseup'
 
       $searchInput.off(eventTriggers).on(eventTriggers, event => {
         if (opts.searchOnEnterKey && event.keyCode !== 13) {
@@ -965,7 +984,7 @@ class BootstrapTable {
       }
     }
 
-    if (!firedByInitSearchText && !this.options.cookie) {
+    if (!firedByInitSearchText) {
       this.options.pageNumber = 1
     }
     this.initSearch()
@@ -1012,10 +1031,10 @@ class BootstrapTable {
           if (filterAlgorithm === 'and') {
             for (const key in f) {
               if (
-                (Array.isArray(f[key]) &&
-                  !f[key].includes(item[key])) ||
-                (!Array.isArray(f[key]) &&
-                  item[key] !== f[key])
+                Array.isArray(f[key]) &&
+                  !f[key].includes(item[key]) ||
+                !Array.isArray(f[key]) &&
+                  item[key] !== f[key]
               ) {
                 return false
               }
@@ -1025,10 +1044,10 @@ class BootstrapTable {
 
             for (const key in f) {
               if (
-                (Array.isArray(f[key]) &&
-                  f[key].includes(item[key])) ||
-                (!Array.isArray(f[key]) &&
-                  item[key] === f[key])
+                Array.isArray(f[key]) &&
+                  f[key].includes(item[key]) ||
+                !Array.isArray(f[key]) &&
+                  item[key] === f[key]
               ) {
                 match = true
               }
@@ -1045,7 +1064,7 @@ class BootstrapTable {
 
       this.data = searchText ? this.data.filter((item, i) => {
         for (let j = 0; j < this.header.fields.length; j++) {
-          if (!this.header.searchables[j] || (this.options.visibleSearch && visibleFields.indexOf(this.header.fields[j]) === -1)) {
+          if (!this.header.searchables[j] || this.options.visibleSearch && visibleFields.indexOf(this.header.fields[j]) === -1) {
             continue
           }
 
@@ -1081,8 +1100,8 @@ class BootstrapTable {
 
           if (typeof value === 'string' || typeof value === 'number') {
             if (
-              this.options.strictSearch && (`${value}`).toLowerCase() === searchText ||
-              (this.options.regexSearch && Utils.regexCompare(value, rawSearchText))
+              this.options.strictSearch && `${value}`.toLowerCase() === searchText ||
+              this.options.regexSearch && Utils.regexCompare(value, rawSearchText)
             ) {
               return true
             }
@@ -1123,7 +1142,7 @@ class BootstrapTable {
               }
             }
 
-            if (comparisonCheck || (`${value}`).toLowerCase().includes(searchText)) {
+            if (comparisonCheck || `${value}`.toLowerCase().includes(searchText)) {
               return true
             }
           }
@@ -1166,8 +1185,8 @@ class BootstrapTable {
 
     pageList = pageList.map(value => {
       if (typeof value === 'string') {
-        return (value.toLowerCase() === opts.formatAllRows().toLowerCase() ||
-          ['all', 'unlimited'].includes(value.toLowerCase())) ? opts.formatAllRows() : +value
+        return value.toLowerCase() === opts.formatAllRows().toLowerCase() ||
+          ['all', 'unlimited'].includes(value.toLowerCase()) ? opts.formatAllRows() : +value
       }
       return value
     })
@@ -1267,10 +1286,10 @@ class BootstrapTable {
         to = this.totalPages
       } else {
         from = opts.pageNumber - opts.paginationPagesBySide
-        to = from + (opts.paginationPagesBySide * 2)
+        to = from + opts.paginationPagesBySide * 2
       }
 
-      if (opts.pageNumber < (opts.paginationSuccessivelySize - 1)) {
+      if (opts.pageNumber < opts.paginationSuccessivelySize - 1) {
         to = opts.paginationSuccessivelySize
       }
 
@@ -1297,15 +1316,15 @@ class BootstrapTable {
         for (i = 1; i <= max; i++) {
           html.push(pageItem(i))
         }
-        if ((from - 1) === max + 1) {
+        if (from - 1 === max + 1) {
           i = from - 1
           html.push(pageItem(i))
-        } else if ((from - 1) > max) {
+        } else if (from - 1 > max) {
           if (
-            (from - opts.paginationPagesBySide * 2) > opts.paginationPagesBySide &&
+            from - opts.paginationPagesBySide * 2 > opts.paginationPagesBySide &&
               opts.paginationUseIntermediate
           ) {
-            i = Math.round(((from - middleSize) / 2) + middleSize)
+            i = Math.round((from - middleSize) / 2 + middleSize)
             html.push(pageItem(i, ' page-intermediate'))
           } else {
             html.push(Utils.sprintf(this.constants.html.paginationItem,
@@ -1322,15 +1341,15 @@ class BootstrapTable {
         let min = this.totalPages - (opts.paginationPagesBySide - 1)
 
         if (to >= min) min = to + 1
-        if ((to + 1) === min - 1) {
+        if (to + 1 === min - 1) {
           i = to + 1
           html.push(pageItem(i))
-        } else if (min > (to + 1)) {
+        } else if (min > to + 1) {
           if (
-            (this.totalPages - to) > opts.paginationPagesBySide * 2 &&
+            this.totalPages - to > opts.paginationPagesBySide * 2 &&
               opts.paginationUseIntermediate
           ) {
-            i = Math.round(((this.totalPages - middleSize - to) / 2) + to)
+            i = Math.round((this.totalPages - middleSize - to) / 2 + to)
             html.push(pageItem(i, ' page-intermediate'))
           } else {
             html.push(Utils.sprintf(this.constants.html.paginationItem,
@@ -1432,7 +1451,7 @@ class BootstrapTable {
       return
     }
     event.preventDefault()
-    if ((this.options.pageNumber - 1) === 0) {
+    if (this.options.pageNumber - 1 === 0) {
       this.options.pageNumber = this.options.totalPages
     } else {
       this.options.pageNumber--
@@ -1446,7 +1465,7 @@ class BootstrapTable {
       return
     }
     event.preventDefault()
-    if ((this.options.pageNumber + 1) > this.options.totalPages) {
+    if (this.options.pageNumber + 1 > this.options.totalPages) {
       this.options.pageNumber = 1
     } else {
       this.options.pageNumber++
@@ -1512,7 +1531,7 @@ class BootstrapTable {
       Utils.sprintf(' style="%s"', Array.isArray(item) ? undefined : item._style),
       ` data-index="${i}"`,
       Utils.sprintf(' data-uniqueid="%s"', Utils.getItemField(item, this.options.uniqueId, false)),
-      Utils.sprintf(' data-has-detail-view="%s"', (this.options.detailView && Utils.calculateObjectValue(null, this.options.detailFilter, [i, item])) ? 'true' : undefined),
+      Utils.sprintf(' data-has-detail-view="%s"', this.options.detailView && Utils.calculateObjectValue(null, this.options.detailFilter, [i, item]) ? 'true' : undefined),
       Utils.sprintf('%s', data_),
       '>'
     )
@@ -1558,7 +1577,7 @@ class BootstrapTable {
       let title_ = ''
 
       if ((this.fromHtml || this.autoMergeCells) && typeof value_ === 'undefined') {
-        if ((!column.checkbox) && (!column.radio)) {
+        if (!column.checkbox && !column.radio) {
           return
         }
       }
@@ -1567,7 +1586,7 @@ class BootstrapTable {
         return
       }
 
-      if (this.options.cardView && (!column.cardVisible)) {
+      if (this.options.cardView && !column.cardVisible) {
         return
       }
 
@@ -1670,7 +1689,7 @@ class BootstrapTable {
         const c = column['class'] || ''
         const isChecked = Utils.isObject(value) && value.hasOwnProperty('checked') ?
           value.checked : (value === true || value_) && value !== false
-        const isDisabled = !column.checkboxEnabled || (value && value.disabled)
+        const isDisabled = !column.checkboxEnabled || value && value.disabled
 
         text = [
           this.options.cardView ?
@@ -1690,7 +1709,7 @@ class BootstrapTable {
           this.options.cardView ? '</div>' : '</td>'
         ].join('')
 
-        item[this.header.stateField] = value === true || (!!value_ || (value && value.checked))
+        item[this.header.stateField] = value === true || (!!value_ || value && value.checked)
       } else if (this.options.cardView) {
         const cardTitle = this.options.showHeader ?
           `<span class="card-view-title ${cellStyle.classes || ''}"${style_}>${Utils.getFieldTitle(this.columns, field)}</span>` : ''
@@ -1800,7 +1819,9 @@ class BootstrapTable {
       })
     }
 
-    toExpand.forEach(index => { this.expandRow(index) })
+    toExpand.forEach(index => {
+      this.expandRow(index)
+    })
 
     if (!fixedScroll) {
       this.scrollTo(0)
@@ -1975,6 +1996,7 @@ class BootstrapTable {
     if (
       this.options.search &&
       this.options.sidePagination === 'server' &&
+      this.options.searchable &&
       this.columns.filter(column => column.searchable).length
     ) {
       params.searchable = []
@@ -1994,7 +2016,7 @@ class BootstrapTable {
       }
     }
 
-    if (!(Utils.isEmptyObject(this.filterColumnsPartial))) {
+    if (!Utils.isEmptyObject(this.filterColumnsPartial)) {
       params.filter = JSON.stringify(this.filterColumnsPartial, null)
     }
 
@@ -2259,12 +2281,12 @@ class BootstrapTable {
 
       if (
         !column.visible ||
-        (this.footerData && this.footerData.length > 0 && !(column.field in this.footerData[0]))
+        this.footerData && this.footerData.length > 0 && !(column.field in this.footerData[0])
       ) {
         continue
       }
 
-      if (this.options.cardView && (!column.cardVisible)) {
+      if (this.options.cardView && !column.cardVisible) {
         return
       }
 
@@ -2404,7 +2426,7 @@ class BootstrapTable {
     for (const field of this.header.fields) {
       const column = this.columns[this.fieldsColumnsIndex[field]]
 
-      if (!column || !column.visible || (this.options.cardView && !column.cardVisible)) {
+      if (!column || !column.visible || this.options.cardView && !column.cardVisible) {
         continue
       }
       visibleFields.push(field)
@@ -2455,14 +2477,14 @@ class BootstrapTable {
       data = this.data
     }
 
-    if (params && params.useCurrentPage) {
-      data = data.slice(this.pageFrom - 1, this.pageTo)
-    }
-
     if (params && !params.includeHiddenRows) {
       const hiddenRows = this.getHiddenRows()
 
       data = data.filter(row => Utils.findIndex(hiddenRows, row) === -1)
+    }
+
+    if (params && params.useCurrentPage) {
+      data = data.slice(this.pageFrom - 1, this.pageTo)
     }
 
     if (params && params.formatted) {
@@ -2622,9 +2644,9 @@ class BootstrapTable {
       if (typeof rowUniqueId === 'string') {
         id = id.toString()
       } else if (typeof rowUniqueId === 'number') {
-        if ((Number(rowUniqueId) === rowUniqueId) && (rowUniqueId % 1 === 0)) {
+        if (Number(rowUniqueId) === rowUniqueId && rowUniqueId % 1 === 0) {
           id = parseInt(id, 10)
-        } else if ((rowUniqueId === Number(rowUniqueId)) && (rowUniqueId !== 0)) {
+        } else if (rowUniqueId === Number(rowUniqueId) && rowUniqueId !== 0) {
           id = parseFloat(id)
         }
       }
@@ -3427,14 +3449,17 @@ $.fn.bootstrapTable = function (option, ...args) {
       return
     }
 
+    if (data) {
+      console.warn('You cannot initialize the table more than once!')
+      return
+    }
+
     const options = Utils.extend(true, {}, BootstrapTable.DEFAULTS, $(el).data(),
       typeof option === 'object' && option)
 
-    if (!data) {
-      data = new $.BootstrapTable(el, options)
-      $(el).data('bootstrap.table', data)
-      data.init()
-    }
+    data = new $.BootstrapTable(el, options)
+    $(el).data('bootstrap.table', data)
+    data.init()
   })
 
   return typeof value === 'undefined' ? this : value
